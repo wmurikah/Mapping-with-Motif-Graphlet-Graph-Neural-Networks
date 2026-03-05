@@ -1,0 +1,32 @@
+# Core
+torch>=2.0.0
+torch-geometric>=2.4.0
+torch-scatter>=2.1.0
+torch-sparse>=0.6.18
+
+# Data & Scientific Computing
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
+scikit-learn>=1.3.0
+networkx>=3.1
+
+# Graph Analysis
+python-igraph>=0.11.0
+graph-tool>=2.45; sys_platform == 'linux'
+
+# Experiment Tracking & Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+tensorboard>=2.13.0
+tqdm>=4.65.0
+
+# Gradient Boosting (engagement prediction)
+xgboost>=1.7.0
+
+# Configuration & Utilities
+pyyaml>=6.0
+jsonlines>=3.1.0
+
+# Reproducibility
+wandb>=0.15.0
