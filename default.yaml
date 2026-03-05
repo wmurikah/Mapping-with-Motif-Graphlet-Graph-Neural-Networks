@@ -1,0 +1,149 @@
+# =============================================================================
+# MGI-GNN Default Configuration
+# Motif-Graphlet Integrated Graph Neural Network for Competency Mapping
+# =============================================================================
+
+experiment:
+  name: "mgi_gnn_default"
+  seed: 42
+  num_runs: 5                    # 5 independent runs (different random seeds)
+  device: "cuda"                 # "cuda" or "cpu"
+  output_dir: "outputs/"
+
+# ---------------------------------------------------------------------------
+# Dataset configuration
+# ---------------------------------------------------------------------------
+data:
+  dataset: "mooccubex"           # "mooccubex" or "oulad"
+  data_dir: "data/"
+  split_ratio: [0.8, 0.1, 0.1]  # train / validation / test
+  stratify: true                 # stratify by student outcome
+  min_interactions: 20           # MOOCCubeX: students with >= 20 events
+  min_concepts: 10               # MOOCCubeX: courses with >= 10 concepts
+  co_occurrence_window: 86400    # OULAD: 24-hour window (seconds) for co-occurrence edges
+
+# ---------------------------------------------------------------------------
+# Graph construction
+# ---------------------------------------------------------------------------
+graph:
+  # Node types per dataset:
+  #   MOOCCubeX: student, course, concept
+  #   OULAD:     student, module, activity (VLE activity types as proxy concepts)
+  #
+  # Edge types per dataset:
+  #   MOOCCubeX: enrols, attempts, contains, prerequisite
+  #   OULAD:     clicks, contains, co_occurrence
+  directed: true
+  self_loops: true               # add self-loops to motif adjacency matrix
+
+# ---------------------------------------------------------------------------
+# Feature extraction
+# ---------------------------------------------------------------------------
+features:
+  motif:
+    max_size: 4                  # 3-node and 4-node subgraph patterns
+    num_types: 13                # 13 directed motif types
+    normalize: true              # row-normalise motif adjacency matrix
+
+  graphlet:
+    min_size: 2
+    max_size: 5
+    orbit_dim: 73                # 73-dimensional orbit signature
+    normalize: true              # L2-normalise GDV
+
+# ---------------------------------------------------------------------------
+# Model architecture
+# ---------------------------------------------------------------------------
+model:
+  name: "mgi_gnn"               # mgi_gnn | gcn | gkt | gikt | lightgcn | mlp
+
+  # Shared
+  embedding_dim: 128             # {64, 128, 256} — tuned per dataset
+  dropout: 0.3
+  num_gnn_layers: 3              # {2, 3, 4} — tuned per dataset
+
+  # Motif encoder
+  motif_encoder:
+    hidden_dims: [128, 128]
+    activation: "relu"
+    use_batch_norm: true
+
+  # Graphlet encoder
+  graphlet_encoder:
+    hidden_dims: [128, 128]      # two-layer feedforward
+    activation: "relu"
+    input_dim: null               # set dynamically: initial_feat_dim + 73
+
+  # Gated attention fusion
+  fusion:
+    method: "gated_attention"    # gated_attention | concatenation | mean
+    gate_hidden_dim: 64
+
+  # Task heads
+  competency_predictor:
+    hidden_dim: 64
+    num_classes: 2               # mastered / not mastered
+
+  cluster_detector:
+    method: "spectral"
+    num_clusters_mooccubex: 10
+    num_clusters_oulad: 5
+
+# ---------------------------------------------------------------------------
+# Training
+# ---------------------------------------------------------------------------
+training:
+  epochs: 100
+  early_stopping_patience: 15
+  optimizer: "adam"
+  learning_rate: 0.005           # {0.001, 0.005, 0.01} — tuned per dataset
+  weight_decay: 1.0e-4
+  scheduler:
+    type: "reduce_on_plateau"
+    factor: 0.5
+    patience: 7
+  batch_size: 256
+  gradient_clip: 1.0
+
+# ---------------------------------------------------------------------------
+# Evaluation
+# ---------------------------------------------------------------------------
+evaluation:
+  tasks:
+    - "competency_prediction"    # AUC-ROC, accuracy
+    - "cluster_detection"        # silhouette, NMI
+    - "engagement_prediction"    # AUC-ROC for pass/fail
+  significance_test: "paired_t"
+  alpha: 0.05
+  bonferroni: true
+
+# ---------------------------------------------------------------------------
+# OULAD-specific overrides (applied when data.dataset == "oulad")
+# ---------------------------------------------------------------------------
+oulad_overrides:
+  model:
+    embedding_dim: 64
+    num_gnn_layers: 2
+  training:
+    learning_rate: 0.01
+
+# ---------------------------------------------------------------------------
+# Ablation variants
+# ---------------------------------------------------------------------------
+ablation:
+  variants:
+    - name: "no_motif"
+      description: "Remove motif encoder (graphlet stream only)"
+      disable: "motif_encoder"
+
+    - name: "no_graphlet"
+      description: "Remove graphlet encoder (motif stream only)"
+      disable: "graphlet_encoder"
+
+    - name: "no_gated_attention"
+      description: "Replace gated attention with simple concatenation"
+      fusion_method: "concatenation"
+
+    - name: "no_higher_order"
+      description: "Standard adjacency-based GCN (same depth)"
+      model_name: "gcn"
