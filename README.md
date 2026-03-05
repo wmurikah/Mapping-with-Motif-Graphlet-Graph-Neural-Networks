@@ -199,7 +199,7 @@ If you use this code, please cite:
   title={Competency Mapping with Motif-Graphlet Graph Neural Networks:
          Engagement-Based Educational Assessment for the Generative AI Challenge},
   author={Nyaga, Kelvin Munene and Musyoka, Faith Mueni and Mugo, David Muchangi
-          and Murikah, Wilberforce, and Kimanga, Jeff},
+          and Murikah, Wilberforce, and Kimanga, Jeff Nthenge},
   year={2025}
 }
 ```
